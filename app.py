@@ -49,7 +49,7 @@ for message in st.session_state.messages:
 
 # --- Single row, pinned to the bottom of the page: mic + chat input (with
 # built-in file attach) side by side, using Streamlit's own bottom container. ---
-with st.bottom():
+with st.bottom:
     col_mic, col_input = st.columns([1, 9])
 
     with col_mic:
