@@ -15,30 +15,6 @@ st.set_page_config(page_title="Gemini Chatbot", page_icon="🤖")
 
 st.title("🤖 Gemini AI Chatbot")
 
-# Shrink the mic recorder so it reads as a compact icon-button next to the
-# chat bar, instead of a full-width waveform strip.
-st.markdown(
-    """
-    <style>
-    div[data-testid="stAudioInput"] {
-        min-width: 0 !important;
-    }
-    div[data-testid="stAudioInput"] > div {
-        background: transparent !important;
-        border: none !important;
-        box-shadow: none !important;
-        padding: 0 !important;
-    }
-    /* Hide the waveform + timer, keep just the record button */
-    div[data-testid="stAudioInput"] span,
-    div[data-testid="stAudioInput"] p {
-        display: none !important;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
-
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
@@ -47,13 +23,15 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# --- Single row, pinned to the bottom of the page: mic + chat input (with
-# built-in file attach) side by side, using Streamlit's own bottom container. ---
+# --- Single row, pinned to the bottom of the page ---
+# Mic sits inside a small popover (so it never has to squeeze/clip inside a
+# narrow column) + chat input (with built-in file attach) next to it.
 with st.bottom:
-    col_mic, col_input = st.columns([1, 9])
+    col_mic, col_input = st.columns([1, 8], vertical_alignment="center")
 
     with col_mic:
-        audio_value = st.audio_input("Voice", label_visibility="collapsed")
+        with st.popover("🎤"):
+            audio_value = st.audio_input("Record a voice message")
 
     with col_input:
         user_turn = st.chat_input(
