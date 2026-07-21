@@ -3,9 +3,12 @@ from google import genai
 from dotenv import load_dotenv
 import os
 
-load_dotenv()  # .env file ko load karta hai
+load_dotenv()  # .env file ko load karta hai (local ke liye)
 
-client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+# Local .env se try karo, warna Streamlit Cloud ke Secrets se
+api_key = os.getenv("GEMINI_API_KEY") or st.secrets.get("GEMINI_API_KEY", None)
+
+client = genai.Client(api_key=api_key)
 
 st.set_page_config(page_title="Gemini Chatbot", page_icon="🤖")
 
