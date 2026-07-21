@@ -23,15 +23,16 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# --- Single row, pinned to the bottom of the page ---
-# Mic sits inside a small popover (so it never has to squeeze/clip inside a
-# narrow column) + chat input (with built-in file attach) next to it.
+# --- Single row, pinned to the bottom of the page: mic directly visible,
+# next to the chat input (which has built-in file attach). Mic is given
+# enough column width so it doesn't clip. ---
 with st.bottom:
-    col_mic, col_input = st.columns([1, 8], vertical_alignment="center")
+    col_mic, col_input = st.columns([2, 7], vertical_alignment="center")
 
     with col_mic:
-        with st.popover("🎤"):
-            audio_value = st.audio_input("Record a voice message")
+        audio_value = st.audio_input(
+            "Record a voice message", label_visibility="collapsed"
+        )
 
     with col_input:
         user_turn = st.chat_input(
