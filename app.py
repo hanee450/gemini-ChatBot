@@ -15,6 +15,30 @@ st.set_page_config(page_title="Gemini Chatbot", page_icon="🤖")
 
 st.title("🤖 Gemini AI Chatbot")
 
+# Shrink the mic recorder so it reads as a compact icon-button next to the
+# chat bar, instead of a full-width waveform strip.
+st.markdown(
+    """
+    <style>
+    div[data-testid="stAudioInput"] {
+        min-width: 0 !important;
+    }
+    div[data-testid="stAudioInput"] > div {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+    }
+    /* Hide the waveform + timer, keep just the record button */
+    div[data-testid="stAudioInput"] span,
+    div[data-testid="stAudioInput"] p {
+        display: none !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
@@ -23,18 +47,21 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# --- Voice recorder sits just above the input bar ---
-audio_value = st.audio_input("Record a voice message", label_visibility="collapsed")
+# --- Single row, pinned to the bottom of the page: mic + chat input (with
+# built-in file attach) side by side, using Streamlit's own bottom container. ---
+with st.bottom():
+    col_mic, col_input = st.columns([1, 9])
 
-# --- Single combined input bar: typing + file attach, built into chat_input ---
-user_turn = st.chat_input(
-    "Ask anything...",
-    accept_file="multiple",
-    file_type=["png", "jpg", "jpeg", "webp", "pdf", "txt", "docx"],
-)
+    with col_mic:
+        audio_value = st.audio_input("Voice", label_visibility="collapsed")
 
-# user_turn is None until the user actually hits send. When accept_file is
-# set, it's an object with .text and .files instead of a plain string.
+    with col_input:
+        user_turn = st.chat_input(
+            "Ask anything...",
+            accept_file="multiple",
+            file_type=["png", "jpg", "jpeg", "webp", "pdf", "txt", "docx"],
+        )
+
 if user_turn or audio_value is not None:
     text_prompt = user_turn.text if user_turn else ""
     uploaded_files = user_turn.files if user_turn else []
@@ -54,7 +81,6 @@ if user_turn or audio_value is not None:
         )
 
     if parts:
-        # Build a readable label for the chat history
         display_bits = []
         if text_prompt:
             display_bits.append(text_prompt)
@@ -84,4 +110,4 @@ if user_turn or audio_value is not None:
             st.markdown(answer)
 
         st.session_state.messages.append({"role": "assistant", "content": answer})
-        st.rerun()  # clears the audio_input widget so it doesn't resend on next interaction
+        st.rerun()
