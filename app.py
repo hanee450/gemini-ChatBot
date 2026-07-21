@@ -23,35 +23,28 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# --- Attachments row: file upload + voice recording ---
-col1, col2 = st.columns([3, 2])
+# --- Voice recorder sits just above the input bar ---
+audio_value = st.audio_input("Record a voice message", label_visibility="collapsed")
 
-with col1:
-    uploaded_files = st.file_uploader(
-        "Attach files",
-        type=["png", "jpg", "jpeg", "webp", "pdf", "txt", "docx"],
-        accept_multiple_files=True,
-        label_visibility="collapsed",
-    )
+# --- Single combined input bar: typing + file attach, built into chat_input ---
+user_turn = st.chat_input(
+    "Ask anything...",
+    accept_file="multiple",
+    file_type=["png", "jpg", "jpeg", "webp", "pdf", "txt", "docx"],
+)
 
-with col2:
-    audio_value = st.audio_input("Record a voice message", label_visibility="collapsed")
+# user_turn is None until the user actually hits send. When accept_file is
+# set, it's an object with .text and .files instead of a plain string.
+if user_turn or audio_value is not None:
+    text_prompt = user_turn.text if user_turn else ""
+    uploaded_files = user_turn.files if user_turn else []
 
-prompt = st.chat_input("Ask anything...")
-
-# Build the list of Gemini "parts" from files/audio, reused whichever way the
-# user triggers a send (typed text and/or attachments).
-def build_parts(text_prompt):
     parts = []
-
     if text_prompt:
         parts.append(text_prompt)
 
-    if uploaded_files:
-        for f in uploaded_files:
-            parts.append(
-                types.Part.from_bytes(data=f.getvalue(), mime_type=f.type)
-            )
+    for f in uploaded_files:
+        parts.append(types.Part.from_bytes(data=f.getvalue(), mime_type=f.type))
 
     if audio_value is not None:
         parts.append(
@@ -60,55 +53,35 @@ def build_parts(text_prompt):
             )
         )
 
-    return parts
-
-
-# Trigger a turn either when the user types + hits enter, OR when they've
-# recorded audio / attached a file and there's no typed prompt yet but they
-# still want to send it. We treat "prompt submitted" as the send signal for
-# text, and give a separate "Send attachment" button for audio/file-only sends.
-send_attachment_only = False
-if (uploaded_files or audio_value is not None) and not prompt:
-    send_attachment_only = st.button("Send attachment")
-
-if prompt or send_attachment_only:
-    parts = build_parts(prompt)
-
-    if not parts:
-        st.stop()
-
-    # Build a readable label for the chat history (files/audio don't have
-    # literal text, so we describe what was sent)
-    display_bits = []
-    if prompt:
-        display_bits.append(prompt)
-    if uploaded_files:
-        display_bits.append(
-            "📎 " + ", ".join(f.name for f in uploaded_files)
-        )
-    if audio_value is not None:
-        display_bits.append("🎤 Voice message")
-    display_text = "\n\n".join(display_bits)
-
-    st.session_state.messages.append({"role": "user", "content": display_text})
-
-    with st.chat_message("user"):
-        st.markdown(display_text)
+    if parts:
+        # Build a readable label for the chat history
+        display_bits = []
+        if text_prompt:
+            display_bits.append(text_prompt)
+        if uploaded_files:
+            display_bits.append("📎 " + ", ".join(f.name for f in uploaded_files))
         if audio_value is not None:
-            st.audio(audio_value)
+            display_bits.append("🎤 Voice message")
+        display_text = "\n\n".join(display_bits)
 
-    with st.chat_message("assistant"):
-        try:
-            response = client.models.generate_content(
-                model="gemini-flash-latest",
-                contents=parts,
-            )
-            answer = response.text
-        except Exception as e:
-            answer = f"⚠️ Error aaya: {e}"
+        st.session_state.messages.append({"role": "user", "content": display_text})
 
-        st.markdown(answer)
+        with st.chat_message("user"):
+            st.markdown(display_text)
+            if audio_value is not None:
+                st.audio(audio_value)
 
-    st.session_state.messages.append(
-        {"role": "assistant", "content": answer}
-    )
+        with st.chat_message("assistant"):
+            try:
+                response = client.models.generate_content(
+                    model="gemini-flash-latest",
+                    contents=parts,
+                )
+                answer = response.text
+            except Exception as e:
+                answer = f"⚠️ Error aaya: {e}"
+
+            st.markdown(answer)
+
+        st.session_state.messages.append({"role": "assistant", "content": answer})
+        st.rerun()  # clears the audio_input widget so it doesn't resend on next interaction
